@@ -1,0 +1,62 @@
+name: hackathon
+services:
+  postgres:
+    image: postgres:14-alpine
+    restart: always
+    container_name: hackathon-postgres
+    environment:
+      POSTGRES_USER: zealy
+      POSTGRES_PASSWORD: zealy
+      POSTGRES_DB: hackathon
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  postgres_test:
+    image: postgres:14-alpine
+    restart: always
+    container_name: hackathon-postgres-test
+    environment:
+      POSTGRES_USER: zealy
+      POSTGRES_PASSWORD: zealy
+      POSTGRES_DB: hackathon
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_test:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli", "-u", "redis://127.0.0.1:6379", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  inngest:
+    image: inngest/inngest:v1.3.1
+    command: >
+      sh -c "
+      cp /certificates/localhost.cert /usr/local/share/ca-certificates/localhost.crt &&
+      update-ca-certificates &&
+      inngest dev --poll-interval 30 -u https://host.docker.internal:3000/api/inngest --verbose
+      "
+    container_name: hackathon-inngest
+    ports:
+      - "8288:8288"
+    volumes:
+      - ./certificates:/certificates
+
+volumes:
+  postgres_data:
+    driver: local
+  postgres_data_test:
+    driver: local
+  redis_data:
+    driver: local
